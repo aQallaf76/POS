@@ -71,51 +71,61 @@ def admin_page():
     else:
         st.info("No sales data available yet.")
 
-    # Display Current Products
     st.markdown("---")
-    st.subheader("Current Product Catalog")
-    st.dataframe(products)
+    st.subheader("Sales Log Management")
 
-    # Add Product
-    st.markdown("### Add a New Product")
-    new_product_name = st.text_input("New Product Name")
-    new_product_price = st.number_input("New Product Price (USD)", min_value=0.0, step=0.01)
-    if st.button("Add Product", key="add_product_button"):
-        if new_product_name and new_product_price > 0:
-            new_product = pd.DataFrame({"Product Name": [new_product_name], "Price (USD)": [new_product_price]})
-            updated_products = pd.concat([products, new_product], ignore_index=True)
-            updated_products.to_csv(product_file, index=False)
-            st.success(f"Product '{new_product_name}' added successfully!")
+    # Display Sales Log
+    if not sales_log.empty:
+        st.markdown("### Current Sales Log")
+        st.dataframe(sales_log)
+
+        # Edit a Sale
+        st.markdown("### Edit a Sale")
+        sale_to_edit = st.selectbox("Select a Reference Number to Edit:", sales_log["Reference Number"])
+        if sale_to_edit:
+            row_index = sales_log[sales_log["Reference Number"] == sale_to_edit].index[0]
+            new_product = st.text_input(
+                "Edit Product Sold", sales_log.loc[row_index, "Product Sold"]
+            )
+            new_quantity = st.number_input(
+                "Edit Quantity", min_value=1, value=int(sales_log.loc[row_index, "Quantity"])
+            )
+            new_total_price = st.number_input(
+                "Edit Total Price", min_value=0.0, value=float(sales_log.loc[row_index, "Total Price"])
+            )
+            new_payment_method = st.selectbox(
+                "Edit Payment Method", ["Cash", "Zelle"], index=["Cash", "Zelle"].index(sales_log.loc[row_index, "Payment Method"])
+            )
+            if st.button("Update Sale", key="update_sale_button"):
+                sales_log.at[row_index, "Product Sold"] = new_product
+                sales_log.at[row_index, "Quantity"] = new_quantity
+                sales_log.at[row_index, "Total Price"] = new_total_price
+                sales_log.at[row_index, "Payment Method"] = new_payment_method
+                sales_log.to_csv(sales_log_file, index=False)
+                st.success(f"Sale with Reference Number {sale_to_edit} updated successfully!")
+                st.experimental_rerun()
+
+        # Delete a Sale
+        st.markdown("### Delete a Sale")
+        sale_to_delete = st.selectbox("Select a Reference Number to Delete:", sales_log["Reference Number"])
+        if st.button("Delete Sale", key="delete_sale_button"):
+            sales_log.drop(sales_log[sales_log["Reference Number"] == sale_to_delete].index, inplace=True)
+            sales_log.to_csv(sales_log_file, index=False)
+            st.success(f"Sale with Reference Number {sale_to_delete} deleted successfully!")
             st.experimental_rerun()
-        else:
-            st.error("Please enter a valid product name and price.")
 
-    # Edit Product
-    st.markdown("### Edit an Existing Product")
-    product_to_edit = st.selectbox("Select a product to edit:", products["Product Name"])
-    if product_to_edit:
-        edited_name = st.text_input("Edit Product Name", value=product_to_edit)
-        edited_price = st.number_input(
-            "Edit Product Price (USD)",
-            value=float(products.loc[products["Product Name"] == product_to_edit, "Price (USD)"].values[0]),
-            min_value=0.0,
-            step=0.01,
-        )
-        if st.button("Update Product", key="update_product_button"):
-            products.loc[products["Product Name"] == product_to_edit, "Product Name"] = edited_name
-            products.loc[products["Product Name"] == edited_name, "Price (USD)"] = edited_price
-            products.to_csv(product_file, index=False)
-            st.success(f"Product '{edited_name}' updated successfully!")
-            st.experimental_rerun()
+    else:
+        st.info("No sales data available yet.")
 
-    # Delete Product
-    st.markdown("### Delete a Product")
-    product_to_delete = st.selectbox("Select a product to delete:", products["Product Name"])
-    if st.button("Delete Product", key="delete_product_button"):
-        updated_products = products[products["Product Name"] != product_to_delete]
-        updated_products.to_csv(product_file, index=False)
-        st.success(f"Product '{product_to_delete}' deleted successfully!")
-        st.experimental_rerun()
+    # Download Sales Log
+    st.markdown("### Download Sales Log")
+    csv = sales_log.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        label="📥 Download Sales Log as CSV",
+        data=csv,
+        file_name="sales_log.csv",
+        mime="text/csv",
+    )
 
     # Back to Main Page
     if st.button("Back to Main Menu", key="back_to_main_menu_button"):
