@@ -148,7 +148,10 @@ def home_page():
 
         # Show Zelle QR Code if selected
         if payment_method == "Zelle":
-            st.image(ZELLE_IMAGE, caption="Scan this QR code to pay", width=200)
+            try:
+                st.image(ZELLE_IMAGE, caption="Scan this QR code to pay", width=200)
+            except FileNotFoundError:
+                st.error("QR code image not found. Please contact support.")
 
         # Confirm Sale
         if st.button("Confirm Sale"):
